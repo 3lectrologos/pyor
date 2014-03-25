@@ -19,7 +19,7 @@ EDGE_WIDTH_NORMAL = 2.0
 EDGE_COLOR_PATH = '#009926'
 EDGE_WIDTH_PATH = 3.0
 
-def find_path(g, start, end, budget):
+def find_path(g, start, end, budget, dry=False):
     # Problem parameters
     N = g.number_of_nodes()
     S = start
@@ -56,6 +56,10 @@ def find_path(g, start, end, budget):
     # Path starts at S and ends at T
     problem += pl.lpSum([x[S][j] for j in range(1, N+1)]) == 1
     problem += pl.lpSum([x[i][T] for i in range(1, N+1)]) == 1
+    # No edges "entering" S or "leaving" T
+    for i in range(1, N+1):
+        problem += x[i][S] == 0
+        problem += x[T][i] == 0
     # "Flow conservation" constraints
     for k in range(1, N+1):
         if k != S and k != T:
@@ -79,7 +83,11 @@ def find_path(g, start, end, budget):
             if i != S and j != S:
                 problem += u[i] - u[j] + (N-1)*x[i][j] <= N-2
     # Write problem to lp file
+    # NOTE: Constant term in the objective is omitted.
     problem.writeLP("mip.lp")
+    if dry == True:
+        return (None, None, None)
+    
     # Solve
     status = problem.solve()
 
@@ -87,6 +95,7 @@ def find_path(g, start, end, budget):
     solstatus = pl.LpStatus[status]
     # If optimal plot path in graph
     if solstatus != 'Optimal':
+        print 'check'
         obj = None
         path = None
     else:
@@ -126,7 +135,9 @@ def plot_path(g, path):
                            pos,
                            width=EDGE_WIDTH_NORMAL,
                            edge_color=EDGE_COLOR_NORMAL)
-    # Plot path
+    if path == None or path == []:
+        plt.show()
+        return
     nodes = nx.draw_networkx_nodes(g,
                                    pos,
                                    nodelist=path,
@@ -140,7 +151,7 @@ def plot_path(g, path):
                            edge_color=EDGE_COLOR_PATH)
     plt.show()
 
-# Small example graph
+# Example graphs
 if __name__ == '__main__':
     g = nx.Graph()
     g.add_node(1, w=0)
@@ -155,8 +166,15 @@ if __name__ == '__main__':
     g.add_edge(2, 4, t=1)
     g.add_edge(2, 5, t=1)
     g.add_edge(3, 5, t=1)
-    
-    (status, objective, path) = find_path(g, start=3, end=4, budget=3)
+
+    g = nx.gnp_random_graph(30, 0.2)
+    g.remove_node(0)
+    print 'num edges =', len(g.edges())
+    for u, v, d in g.edges_iter(data=True):
+        d['t'] = 1
+    for u, d in g.nodes_iter(data=True):
+        d['w'] = 1
+    (status, objective, path) = find_path(g, start=3, end=4, budget=10, dry=True)
     print 'Status: ', status
     print 'Objective = ', objective
     plot_path(g, path)
