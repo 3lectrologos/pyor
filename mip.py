@@ -1,3 +1,6 @@
+"""
+Formulate and solve orienteering problem for an example NetworkX graph.
+"""
 import networkx as nx
 import pylab as plt
 import pulp as pl
