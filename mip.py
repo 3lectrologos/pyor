@@ -2,6 +2,8 @@ import networkx as nx
 import pylab as plt
 import pulp as pl
 
+DEBUG = False
+
 NODE_COLOR_NORMAL = '#5555EE'
 NODE_BORDER_COLOR_NORMAL = '0.2'
 NODE_COLOR_PATH = '#009926'
@@ -93,49 +95,49 @@ problem.writeLP("mip.lp")
 status = problem.solve()
 
 # Print solution
-print pl.LpStatus[status]
-print 'obj =', pl.value(problem.objective)
-nxt = dict()
-for i in range(1, N+1):
-    for j in range(1, N+1):
-        print x[i][j], pl.value(x[i][j])
-        if pl.value(x[i][j]) == 1:
-            nxt[i] = j
-print nxt
-path = [S]
-edgelist = []
-v = S
-while True:
-    path.append(nxt[v])
-    edgelist.append((v, nxt[v]))
-    v = nxt[v]
-    if v == T:
-        break
-print path
-print edgelist
-pos = nx.graphviz_layout(g)
-nodes = nx.draw_networkx_nodes(g,
-                               pos,
-                               node_size=NODE_SIZE_NORMAL,
-                               node_color=NODE_COLOR_NORMAL)
-nodes.set_edgecolor(NODE_BORDER_COLOR_NORMAL)
-nx.draw_networkx_labels(g,
-                        pos,
-                        font_color=LABEL_COLOR_NORMAL,
-                        font_size=LABEL_FONT_SIZE_NORMAL)
-nx.draw_networkx_edges(g,
-                       pos,
-                       width=EDGE_WIDTH_NORMAL,
-                       edge_color=EDGE_COLOR_NORMAL)
-nodes = nx.draw_networkx_nodes(g,
-                               pos,
-                               nodelist=path,
-                               node_size=NODE_SIZE_NORMAL,
-                               node_color=NODE_COLOR_PATH)
-nodes.set_edgecolor(NODE_BORDER_COLOR_PATH)
-nx.draw_networkx_edges(g,
-                       pos,
-                       edgelist=edgelist,
-                       width=EDGE_WIDTH_PATH,
-                       edge_color=EDGE_COLOR_PATH)
-plt.show()
+print 'Solution status:', pl.LpStatus[status]
+# If optimal plot path in graph
+print 'Objective =', pl.value(problem.objective)
+if status == 1:
+    nxt = dict()
+    for i in range(1, N+1):
+        for j in range(1, N+1):
+            if DEBUG:
+                print x[i][j], pl.value(x[i][j])
+            if pl.value(x[i][j]) == 1:
+                nxt[i] = j
+    path = [S]
+    edgelist = []
+    v = S
+    while True:
+        path.append(nxt[v])
+        edgelist.append((v, nxt[v]))
+        v = nxt[v]
+        if v == T:
+            break
+    pos = nx.graphviz_layout(g)
+    nodes = nx.draw_networkx_nodes(g,
+                                   pos,
+                                   node_size=NODE_SIZE_NORMAL,
+                                   node_color=NODE_COLOR_NORMAL)
+    nodes.set_edgecolor(NODE_BORDER_COLOR_NORMAL)
+    nx.draw_networkx_labels(g,
+                            pos,
+                            font_color=LABEL_COLOR_NORMAL,
+                            font_size=LABEL_FONT_SIZE_NORMAL)
+    nx.draw_networkx_edges(g,
+                           pos,
+                           width=EDGE_WIDTH_NORMAL,
+                           edge_color=EDGE_COLOR_NORMAL)
+    nodes = nx.draw_networkx_nodes(g,
+                                   pos,
+                                   nodelist=path,
+                                   node_size=NODE_SIZE_NORMAL,
+                                   node_color=NODE_COLOR_PATH)
+    nodes.set_edgecolor(NODE_BORDER_COLOR_PATH)
+    nx.draw_networkx_edges(g,
+                           pos,
+                           edgelist=edgelist,
+                           width=EDGE_WIDTH_PATH,
+                           edge_color=EDGE_COLOR_PATH)
+    plt.show()
