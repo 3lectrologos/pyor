@@ -1,2 +1,6 @@
 *~
 *.lp
+*.pyc
+data/*
+!data/list-images-geo.tsv
+!data/generate-geo-graph.py

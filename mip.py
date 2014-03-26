@@ -114,14 +114,15 @@ def find_path(g, start, end, budget, dry=False):
             path.append(v)
     return (solstatus, obj, path)
 
-def plot_path(g, path):
+def plot_path(g, path, pos=None):
     # Create edgelist of path
     if path == None:
         edgelist = []
     else:
         edgelist = zip(path[:-1], path[1:])
     # Plot graph
-    pos = nx.graphviz_layout(g)
+    if pos == None:
+        pos = nx.graphviz_layout(g)
     nodes = nx.draw_networkx_nodes(g,
                                    pos,
                                    node_size=NODE_SIZE_NORMAL,
@@ -174,7 +175,7 @@ if __name__ == '__main__':
         d['t'] = 1
     for u, d in g.nodes_iter(data=True):
         d['w'] = 1
-    (status, objective, path) = find_path(g, start=3, end=4, budget=10, dry=True)
+    (status, objective, path) = find_path(g, start=3, end=4, budget=10)
     print 'Status: ', status
     print 'Objective = ', objective
     plot_path(g, path)
