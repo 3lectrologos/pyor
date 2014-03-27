@@ -1,11 +1,12 @@
 """
 Formulate and solve orienteering problem for a given NetworkX graph.
 """
+import time
 import networkx as nx
 import pylab as plt
 import pulp as pl
 
-DEBUG = False
+DEBUG = True
 
 NODE_COLOR_NORMAL = '#5555EE'
 NODE_BORDER_COLOR_NORMAL = '0.2'
@@ -19,9 +20,9 @@ EDGE_WIDTH_NORMAL = 2.0
 EDGE_COLOR_PATH = '#009926'
 EDGE_WIDTH_PATH = 3.0
 
-def find_path(g, start, end, budget, dry=False):
+def find_path(g, start, end, budget, maxnodes=10, dry=False):
     if start != end:
-        return find_path_aux(g, start, end, budget, dry)
+        return find_path_aux(g, start, end, budget, maxnodes, dry)
     else:
         startedges = g.edges(start, data=True)
         dummy = g.number_of_nodes() + 1
@@ -29,7 +30,8 @@ def find_path(g, start, end, budget, dry=False):
         for (u, v, d) in startedges:
             assert u == start
             g.add_edge(v, dummy, t=d['t'])
-        (solstatus, obj, path) = find_path_aux(g, start, dummy, budget, dry)
+        (solstatus, obj, path) = find_path_aux(g, start, dummy,
+                                               budget, maxnodes, dry)
         g.remove_node(dummy)
         if path != None:
             assert path[-1] == dummy
@@ -37,15 +39,16 @@ def find_path(g, start, end, budget, dry=False):
         return (solstatus, obj, path)
 
 
-def find_path_aux(g, start, end, budget, dry=False):
+def find_path_aux(g, start, end, budget, maxnodes, dry=False):
     # Problem parameters
     N = g.number_of_nodes()
     S = start
     T = end
     B = budget
+    M = maxnodes
 
     if DEBUG:
-        print '(N, S, T, B) = (', N, ',', S, ',', T, ',', B, ')'
+        print '(N, S, T, B, M) =', ','.join(map(str, [N, S, T, B, M]))
 
     # Problem init
     problem = pl.LpProblem("Orienteering", pl.LpMaximize)
@@ -95,7 +98,7 @@ def find_path_aux(g, start, end, budget, dry=False):
     # Vertex budget constraint (experimental)
     problem += pl.lpSum([x[i][j]
                         for i in range(1, N+1)
-                        for j in range(1, N+1)]) <= 10
+                        for j in range(1, N+1)]) <= M
     # Subtour elimination constraints (1)
     for k in range(1, N+1):
         if k != S:
@@ -109,12 +112,20 @@ def find_path_aux(g, start, end, budget, dry=False):
                 problem += u[i] - u[j] + (N-1)*x[i][j] <= N-2
     # Write problem to lp file
     # NOTE: Constant term in the objective is omitted.
+    stime = time.time()
     problem.writeLP("mip.lp")
+    etime = time.time()
+    if DEBUG:
+        print 'Time to write to file:', etime - stime
     if dry == True:
         return (None, None, None)
     
     # Solve
+    stime = time.time()
     status = problem.solve()
+    etime = time.time()
+    if DEBUG:
+        print 'Time to solve:', etime - stime
 
     # Print solution status and objective
     solstatus = pl.LpStatus[status]
@@ -127,8 +138,8 @@ def find_path_aux(g, start, end, budget, dry=False):
         nxt = dict()
         for i in range(1, N+1):
             for j in range(1, N+1):
-                if DEBUG:
-                    print x[i][j], pl.value(x[i][j])
+                #if DEBUG:
+                #    print x[i][j], pl.value(x[i][j])
                 if pl.value(x[i][j]) == 1:
                     nxt[i] = j
         path = [S]
@@ -204,7 +215,8 @@ def demo_graph_gnp(n=30):
 
 if __name__ == '__main__':
     g = demo_graph_gnp(n=150)
-    (status, objective, path) = find_path(g, start=1, end=1, budget=30)
+    (status, objective, path) = find_path(g, start=1, end=1,
+                                          budget=30, maxnodes=10)
     print 'Status: ', status
     print 'Objective = ', objective
     plot_path(g, path)
