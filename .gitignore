@@ -2,5 +2,7 @@
 *.lp
 *.pyc
 data/*
-!data/list-images-geo.tsv
+!data/utils_flickr.py
 !data/generate-geo-graph.py
+!data/list-images-geo.tsv
+!data/valid_images
