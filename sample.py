@@ -27,7 +27,7 @@ with open(edgefile, 'r') as tsvin:
         g.add_edge(key[row[0]], key[row[1]], t=float(row[2]))
 
 pos = nx.get_node_attributes(g, 'pos')
-(status, objective, path) = mip.find_path(g, start=35, end=49, budget=2)
+(status, objective, path) = mip.find_path(g, start=64, end=155, budget=2)
 print 'Status: ', status
 print 'Objective = ', objective
 mip.plot_path(g, path, pos=pos)

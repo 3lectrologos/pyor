@@ -20,11 +20,32 @@ EDGE_COLOR_PATH = '#009926'
 EDGE_WIDTH_PATH = 3.0
 
 def find_path(g, start, end, budget, dry=False):
+    if start != end:
+        return find_path_aux(g, start, end, budget, dry)
+    else:
+        startedges = g.edges(start, data=True)
+        dummy = g.number_of_nodes() + 1
+        g.add_node(dummy, w=0)
+        for (u, v, d) in startedges:
+            assert u == start
+            g.add_edge(v, dummy, t=d['t'])
+        (solstatus, obj, path) = find_path_aux(g, start, dummy, budget, dry)
+        g.remove_node(dummy)
+        if path != None:
+            assert path[-1] == dummy
+            path[-1] = start
+        return (solstatus, obj, path)
+
+
+def find_path_aux(g, start, end, budget, dry=False):
     # Problem parameters
     N = g.number_of_nodes()
     S = start
     T = end
     B = budget
+
+    if DEBUG:
+        print '(N, S, T, B) = (', N, ',', S, ',', T, ',', B, ')'
 
     # Problem init
     problem = pl.LpProblem("Orienteering", pl.LpMaximize)
@@ -71,6 +92,10 @@ def find_path(g, start, end, budget, dry=False):
     problem += pl.lpSum([t[i][j]*x[i][j]
                         for i in range(1, N+1)
                         for j in range(1, N+1)]) <= B
+    # Vertex budget constraint (experimental)
+    problem += pl.lpSum([x[i][j]
+                        for i in range(1, N+1)
+                        for j in range(1, N+1)]) <= 10
     # Subtour elimination constraints (1)
     for k in range(1, N+1):
         if k != S:
@@ -95,7 +120,6 @@ def find_path(g, start, end, budget, dry=False):
     solstatus = pl.LpStatus[status]
     # If optimal plot path in graph
     if solstatus != 'Optimal':
-        print 'check'
         obj = None
         path = None
     else:
@@ -153,7 +177,7 @@ def plot_path(g, path, pos=None):
     plt.show()
 
 # Example graphs
-if __name__ == '__main__':
+def demo_graph_small():
     g = nx.Graph()
     g.add_node(1, w=0)
     g.add_node(2, w=1.5)
@@ -167,15 +191,20 @@ if __name__ == '__main__':
     g.add_edge(2, 4, t=1)
     g.add_edge(2, 5, t=1)
     g.add_edge(3, 5, t=1)
+    return g
 
-    g = nx.gnp_random_graph(30, 0.2)
+def demo_graph_gnp(n=30):
+    g = nx.gnp_random_graph(n+1, 0.2)
     g.remove_node(0)
-    print 'num edges =', len(g.edges())
     for u, v, d in g.edges_iter(data=True):
         d['t'] = 1
     for u, d in g.nodes_iter(data=True):
         d['w'] = 1
-    (status, objective, path) = find_path(g, start=3, end=4, budget=10)
+    return g
+
+if __name__ == '__main__':
+    g = demo_graph_gnp(n=150)
+    (status, objective, path) = find_path(g, start=1, end=1, budget=30)
     print 'Status: ', status
     print 'Objective = ', objective
     plot_path(g, path)
