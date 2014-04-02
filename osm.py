@@ -51,7 +51,8 @@ for w in ways:
         x = [c1[0], c2[0]]
         y = [c1[1], c2[1]]
 
-(status, objective, path) = mip.find_path(g, start=1, end=70, budget=50)
+(status, objective, path) = mip.find_path(g, start=110, end=90,
+                                          budget=50, maxnodes=15)
 print (status, objective, path)
 mip.plot_path(g, path, pos=cn)
 

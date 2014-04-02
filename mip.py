@@ -12,7 +12,7 @@ NODE_COLOR_NORMAL = '#5555EE'
 NODE_BORDER_COLOR_NORMAL = '0.2'
 NODE_COLOR_PATH = '#009926'
 NODE_BORDER_COLOR_PATH = '0.2'
-NODE_SIZE_NORMAL = 600
+NODE_SIZE_NORMAL = 60
 LABEL_COLOR_NORMAL = '0.9'
 LABEL_FONT_SIZE_NORMAL = 11
 EDGE_COLOR_NORMAL = '0.2'
@@ -122,7 +122,7 @@ def find_path_aux(g, start, end, budget, maxnodes, dry=False):
     
     # Solve
     stime = time.time()
-    status = problem.solve()
+    status = problem.solve(pl.solvers.GUROBI())
     etime = time.time()
     if DEBUG:
         print 'Time to solve:', etime - stime
@@ -163,10 +163,10 @@ def plot_path(g, path, pos=None):
                                    node_size=NODE_SIZE_NORMAL,
                                    node_color=NODE_COLOR_NORMAL)
     nodes.set_edgecolor(NODE_BORDER_COLOR_NORMAL)
-    nx.draw_networkx_labels(g,
-                            pos,
-                            font_color=LABEL_COLOR_NORMAL,
-                            font_size=LABEL_FONT_SIZE_NORMAL)
+#    nx.draw_networkx_labels(g,
+#                            pos,
+#                            font_color=LABEL_COLOR_NORMAL,
+#                            font_size=LABEL_FONT_SIZE_NORMAL)
     nx.draw_networkx_edges(g,
                            pos,
                            width=EDGE_WIDTH_NORMAL,
