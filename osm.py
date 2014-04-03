@@ -1,7 +1,12 @@
 import json
-import networkx as nx
+import csv
+import numpy as np
+import scipy.spatial as sp
 import matplotlib.pyplot as plt
-import mip
+import networkx as nx
+import geopy.distance
+import grb
+import util
 
 
 DEBUG = False
@@ -30,7 +35,7 @@ def filter_data(data):
     coords = dict((k, v) for k, v in coords.iteritems() if k in nodes)
     return (nodes, coords, ways)
 
-with open('roads_small.json') as f:
+with open('roads_large.json') as f:
     data = json.load(f)
 
 (nodes, coords, ways) = filter_data(data)
@@ -41,20 +46,47 @@ o2n = dict(zip(nodes, range(1, n+1)))
 cn = dict((k, coords[n2o[k]]) for k in range(1, n+1))
 g = nx.Graph()
 for i in range(1, n+1):
-    g.add_node(i, pos=cn[i], w=1)
+    g.add_node(i, pos=cn[i], w=0, m=0)
 
 for w in ways:
     for i in range(1, len(w)):
-        g.add_edge(o2n[w[i-1]], o2n[w[i]], t=1)
         c1 = coords[w[i-1]]
         c2 = coords[w[i]]
-        x = [c1[0], c2[0]]
-        y = [c1[1], c2[1]]
+        t = geopy.distance.vincenty(c1, c2).meters
+        g.add_edge(o2n[w[i-1]], o2n[w[i]], t=t)
 
-(status, objective, path) = mip.find_path(g, start=110, end=90,
-                                          budget=50, maxnodes=15)
+# Read photo locations
+with open('photo_coords.csv', 'r') as tsvin:
+    tsvin = csv.reader(tsvin, delimiter=',')
+    locs = np.array([(float(row[0]), float(row[1])) for row in tsvin])
+# Plot photo locations
+#plt.plot(locs[:,0], locs[:,1], 'ro')
+# Find nearest node of each photo location
+kd = sp.KDTree(np.array(cn.values()))
+idxs = list(kd.query(locs)[1])
+k = 1
+for i, idx in enumerate(idxs):
+    nni = cn.keys()[idx]
+    nnc = cn.values()[idx]
+    #plt.plot(nnc[0], nnc[1], 'yo')
+    # Photo node
+    g.add_node(n+k, w=1, m=1, photo=True)
+    cn[n+k] = (locs[i,0], locs[i,1])
+    g.add_edge(nni, n+k, t=0)
+    k = k + 1
+    # Aux node on top of nearest node
+    g.add_node(n+k, w=0, m=0)
+    cn[n+k] = (nnc[0], nnc[1])
+#    g.edge[n+k] = g.edge[nni]
+    es = g.edge[nni]
+    for v in es:
+        g.add_edge(n+k, v, t=es[v]['t'])
+    k = k + 1
+
+(status, objective, path) = grb.find_path(g, start=2515, end=42, budget=3500,
+                                          minnodes=5, maxnodes=10)
 print (status, objective, path)
-mip.plot_path(g, path, pos=cn)
+grb.plot_path(g, path, pos=cn)
 
 if DEBUG:
     nodes_dr = nx.draw_networkx_nodes(g,
