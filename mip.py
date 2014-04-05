@@ -1,5 +1,5 @@
 """
-Formulate and solve orienteering problem for a given NetworkX graph.
+Formulate and solve the orienteering problem for a given NetworkX graph.
 """
 import gurobipy as grb
 import util
@@ -7,9 +7,9 @@ import util
 
 DEBUG = True
 
-def find_path(g, start, end, budget, minnodes, maxnodes, dry=False):
+def find_path(g, start, end, edge_budget, node_budget, dry=False):
     if start != end:
-        return find_path_aux(g, start, end, budget, minnodes, maxnodes, dry)
+        return find_path_aux(g, start, end, edge_budget, node_budget, dry)
     else:
         startedges = g.edges(start, data=True)
         dummy = g.number_of_nodes() + 1
@@ -17,25 +17,24 @@ def find_path(g, start, end, budget, minnodes, maxnodes, dry=False):
         for (u, v, d) in startedges:
             assert u == start
             g.add_edge(v, dummy, t=d['t'])
-        (solstatus, obj, path) = find_path_aux(g, start, dummy,
-                                               budget, minnodes, maxnodes, dry)
+        (solstatus, obj, path) = find_path_aux(g, start, dummy, edge_budget,
+                                               node_budget, dry)
         g.remove_node(dummy)
         if path != None:
             assert path[-1] == dummy
             path[-1] = start
         return (solstatus, obj, path)
 
-def find_path_aux(g, start, end, budget, minnodes, maxnodes, dry=False):
+def find_path_aux(g, start, end, edge_budget, node_budget, dry=False):
     # Problem parameters
     N = g.number_of_nodes()
     S = start
     T = end
-    B = budget
-    ML = minnodes
-    MH = maxnodes
+    EB = edge_budget
+    NB = node_budget
 
     if DEBUG:
-        print '(N, S, T, B, ML, MH) =', ','.join(map(str, [N, S, T, B, ML, MH]))
+        print '(N, S, T, EB, NB) =', ','.join(map(str, [N, S, T, EB, NB]))
     # Model init
     model = grb.Model("Orienteering")
     # Weights and variables
@@ -88,16 +87,18 @@ def find_path_aux(g, start, end, budget, minnodes, maxnodes, dry=False):
     # "Flow conservation" constraints
     for k in RN:
         if k != S and k != T:
-            model.addConstr(grb.quicksum(x[i,k] for i in RN if (i, k) in x) <= 1)
-            model.addConstr(grb.quicksum(x[k,j] for j in RN if (k, j) in x) <= 1)
-            model.addConstr(grb.quicksum(x[i,k] for i in RN if i != T and (i, k) in x) +
-                            grb.quicksum(-x[k,j] for j in RN if j != S and (k, j) in x) == 0)
+            model.addConstr(
+                grb.quicksum(x[i,k] for i in RN if (i, k) in x) <= 1)
+            model.addConstr(
+                grb.quicksum(x[k,j] for j in RN if (k, j) in x) <= 1)
+            model.addConstr(
+                grb.quicksum(x[i,k] for i in RN if i != T and (i, k) in x) +
+                grb.quicksum(-x[k,j] for j in RN if j != S and (k, j) in x)
+                == 0)
     # Edge budget constraint
-    #model.setObjective(grb.quicksum(t[i,j]*x[i,j] for (i, j) in x), grb.GRB.MINIMIZE)
-    model.addConstr(grb.quicksum(t[i,j]*x[i,j] for (i, j) in x) <= B)
-    # Vertex budget constraints
-    #model.addConstr(grb.quicksum(m[j]*x[i,j] for (i, j) in x) >= ML)
-    model.addConstr(grb.quicksum(m[j]*x[i,j] for (i, j) in x) <= MH)
+    model.addConstr(grb.quicksum(t[i,j]*x[i,j] for (i, j) in x) <= EB)
+    # Node budget constraints
+    model.addConstr(grb.quicksum(m[j]*x[i,j] for (i, j) in x) <= NB)
     # Subtour elimination constraints (1)
     for k in RN:
         if k != S:
@@ -121,7 +122,8 @@ def find_path_aux(g, start, end, budget, minnodes, maxnodes, dry=False):
     model.optimize()
 
     # If optimal plot path in graph
-    if model.status != grb.GRB.status.OPTIMAL and model.status != grb.GRB.status.INTERRUPTED:
+    if (model.status != grb.GRB.status.OPTIMAL and
+        model.status != grb.GRB.status.INTERRUPTED):
         obj = None
         path = None
     else:

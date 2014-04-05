@@ -156,10 +156,3 @@ class OsmGraph(nx.Graph):
 def show():
     plt.subplots_adjust(left=0.001, right=0.999, top=0.999, bottom=0.001)
     plt.show()
-
-def node_cover_area(ps, radius=0.001):
-    u = sply.ops.cascaded_union(sply.geometry.Point(p).buffer(radius) for p in ps)
-    return u.area
-
-def plot_cover(ps, radius=0.001):
-    pass
