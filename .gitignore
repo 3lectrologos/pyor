@@ -1,6 +1,7 @@
 *~
 *.lp
 *.pyc
+*.log
 data/*
 !data/utils_flickr.py
 !data/generate-geo-graph.py
