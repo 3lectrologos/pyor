@@ -119,10 +119,12 @@ def find_path_aux(g, start, end, edge_budget, node_budget, dry=False):
         return (None, None, None)
     
     # Solve
+    model.setParam('MIPGap', 0.2)
     model.optimize()
 
     # If optimal plot path in graph
     if (model.status != grb.GRB.status.OPTIMAL and
+        model.status != grb.GRB.status.TIME_LIMIT and
         model.status != grb.GRB.status.INTERRUPTED):
         obj = None
         path = None

@@ -3,9 +3,12 @@ import csv
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import matplotlib.collections
+import matplotlib.patches
 import scipy.spatial as sp
 import geopy.distance
-import shapely as sply
+import shapely.geometry
+import shapely.ops
 
 
 def read_osm_file(fin):
@@ -83,11 +86,15 @@ class OsmGraph(nx.Graph):
                                        node_color=NODE_COLOR_NORMAL)
         if nodes != None:
             nodes.set_edgecolor(NODE_BORDER_COLOR_NORMAL)
+        ws = nx.get_node_attributes(self, 'w')
+        print 'ws =', ws
+        sizes = [20 + ws[v]*NODE_SIZE_PATH for v in self.photo_nodes()]
+        print 'non-path=', sizes
         nodes = nx.draw_networkx_nodes(self,
                                        self.pos,
                                        nodelist=self.photo_nodes(),
                                        node_shape=NODE_SHAPE_PHOTO,
-                                       node_size=NODE_SIZE_PHOTO,
+                                       node_size=sizes,
                                        node_color=NODE_COLOR_PHOTO)
         if nodes != None:
             nodes.set_edgecolor(NODE_BORDER_COLOR_PHOTO)
@@ -115,13 +122,16 @@ class OsmGraph(nx.Graph):
                                        node_color=NODE_COLOR_PATH)
         if nodes != None:
             nodes.set_edgecolor(NODE_BORDER_COLOR_PATH)
+        ws = nx.get_node_attributes(self, 'w')
         photo_path_nodes = list(set(path) & set(self.photo_nodes()))
         if photo_path_nodes != []:
+            sizes = [20 + ws[v]*NODE_SIZE_PATH for v in photo_path_nodes]
+            print 'path=', sizes
             nodes = nx.draw_networkx_nodes(self,
                                            self.pos,
                                            nodelist=photo_path_nodes,
                                            node_shape=NODE_SHAPE_PHOTO,
-                                           node_size=NODE_SIZE_PATH,
+                                           node_size=sizes,
                                            node_color=NODE_COLOR_PHOTO_PATH)
         if nodes != None:
             nodes.set_edgecolor(NODE_BORDER_COLOR_PATH)
@@ -155,4 +165,34 @@ class OsmGraph(nx.Graph):
 
 def show():
     plt.subplots_adjust(left=0.001, right=0.999, top=0.999, bottom=0.001)
+    plt.axis('equal')
     plt.show()
+
+def draw():
+    plt.subplots_adjust(left=0.001, right=0.999, top=0.999, bottom=0.001)
+    plt.axis('equal')
+    plt.draw()
+
+def cover_area(ps, radius=0.0008):
+    u = shapely.ops.cascaded_union(
+        [shapely.geometry.Point(p).buffer(radius) for p in ps])
+    return u.area
+
+def plot_cover(ps, radius=0.0008):
+    ax = plt.gca()
+    col = matplotlib.collections.PatchCollection(
+        [matplotlib.patches.Circle(p, radius) for p in ps],
+        alpha=0.3)
+    ax.add_collection(col)
+
+def subg(f, v, y):
+    assert set(y) <= set(v)
+    perm = list(y) + list(set(v) - set(y))
+    h = {}
+    vals = [0]
+    for i in range(1, len(perm)+1):
+        val = f(perm[:i]) - sum(vals)
+        h[perm[i-1]] = val
+        vals.append(val)
+    c = f(y) - sum(vals[:len(y)+1])
+    return lambda x: c + sum(h[e] for e in x)
