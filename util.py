@@ -10,6 +10,7 @@ import scipy.spatial as sp
 import geopy.distance
 import shapely.geometry
 import shapely.ops
+import mpl_toolkits.basemap as bsmp
 
 
 def read_osm_file(fin):
@@ -48,7 +49,7 @@ NODE_BORDER_COLOR_PATH = '0.2'
 NODE_SIZE_NORMAL = 15
 NODE_SIZE_PHOTO_MIN = 20
 NODE_SIZE_PHOTO_SCALE = 100
-NODE_SIZE_PATH = 10
+NODE_SIZE_PATH = 30
 NODE_SHAPE_PHOTO = 's'
 LABEL_COLOR_NORMAL = '0.1'
 LABEL_FONT_SIZE_NORMAL = 11
@@ -71,6 +72,12 @@ class OsmGraph(nx.Graph):
     def __init__(self, osm_file):
         nx.Graph.__init__(self)
         (nodes, coords, ways) = read_osm_file(osm_file)
+        cproj = coords.values()[0]
+        self.mp = bsmp.Basemap(projection='ortho',
+                               lon_0=cproj[0],
+                               lat_0=cproj[1])
+        for k, v in coords.iteritems():
+            coords[k] = self.mp(v[0], v[1])
         self.ways = ways
         n = len(nodes)
         n2o = dict(n for n in enumerate(nodes, start=1))
@@ -82,7 +89,7 @@ class OsmGraph(nx.Graph):
             for i in range(1, len(w)):
                 c1 = coords[w[i-1]]
                 c2 = coords[w[i]]
-                t = geopy.distance.vincenty(c1, c2).meters
+                t = np.linalg.norm((c1[0]-c2[0], c1[1]-c2[1]))
                 self.add_edge(o2n[w[i-1]], o2n[w[i]], t=t)
         self.pos = pos
 
@@ -172,6 +179,7 @@ class OsmGraph(nx.Graph):
             nodes.set_edgecolor(NODE_BORDER_COLOR_ST_INNER)
 
     def add_photo_nodes(self, photo_locs):
+        photo_locs = [self.mp(i, j) for i, j in photo_locs]
         photo_locs = np.array(photo_locs)
         n = self.number_of_nodes()
         kd = sp.KDTree(np.array(self.pos.values()))
@@ -196,6 +204,8 @@ class OsmGraph(nx.Graph):
 def show():
     plt.subplots_adjust(left=0.001, right=0.999, top=0.999, bottom=0.001)
     plt.axis('equal')
+    plt.gca().set_xlim((6370000, 6372000))
+    plt.gca().set_ylim((6370000, 6372000))
     plt.show()
 
 def draw():
@@ -203,19 +213,19 @@ def draw():
     plt.axis('equal')
     plt.draw()
 
-def cover_area(ps, radius=0.0008):
+def cover_area(ps, radius=200):
     u = shapely.ops.cascaded_union(
         [shapely.geometry.Point(p).buffer(radius) for p in ps])
     return u.area
 
-def plot_cover(ps, radius=0.0008):
+def plot_cover(ps, radius=200):
     ax = plt.gca()
     col = matplotlib.collections.PatchCollection(
         [matplotlib.patches.Circle(p, radius) for p in ps],
         alpha=0.3)
     ax.add_collection(col)
 
-def greedy_cover(ps, radius=0.0008):
+def greedy_cover(ps, radius=200):
     ps = {k: shapely.geometry.Point(v).buffer(radius)
           for k, v in ps.iteritems()}
     k, u = ps.popitem()

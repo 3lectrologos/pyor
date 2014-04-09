@@ -8,8 +8,9 @@ import util
 
 
 FILE_GRAPH = 'graph.pickle'
+RADIUS = 100
 
-def create_graph(radius = 0.0008):
+def create_graph(radius):
     pn = g.photo_nodes()
     d = {foo: g.pos[foo] for foo in pn}
     perm, gains = util.greedy_cover({foo: g.pos[foo] for foo in pn}, radius)
@@ -35,13 +36,13 @@ t = 2000
 if os.path.isfile(FILE_GRAPH):
     g = load_graph(FILE_GRAPH)
 else:
-    g = create_graph()
+    g = create_graph(RADIUS)
     save_graph(g, FILE_GRAPH)
 
 #plt.ion()
 g.plot()
 g.plot_st(s, t)
-util.plot_cover(photo_locs)
+util.plot_cover([g.pos[u] for u in g.photo_nodes()], radius=RADIUS)
 #util.draw()
 plt.gcf().set_size_inches(32, 18)
 plt.savefig('init.pdf', format='pdf', bbox_inches='tight')
