@@ -3,6 +3,7 @@ import csv
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import matplotlib.markers
 import matplotlib.collections
 import matplotlib.patches
 import scipy.spatial as sp
@@ -44,10 +45,10 @@ NODE_BORDER_COLOR_NORMAL = '0.2'
 NODE_BORDER_COLOR_PHOTO = '0.2'
 NODE_COLOR_PATH = '#009926'
 NODE_BORDER_COLOR_PATH = '0.2'
-NODE_SIZE_NORMAL = 40
-NODE_SIZE_PHOTO = 60
-NODE_SIZE_PATH = 80
-NODE_SIZE_PHOTO_PATH = 100
+NODE_SIZE_NORMAL = 15
+NODE_SIZE_PHOTO_MIN = 20
+NODE_SIZE_PHOTO_SCALE = 100
+NODE_SIZE_PATH = 10
 NODE_SHAPE_PHOTO = 's'
 LABEL_COLOR_NORMAL = '0.1'
 LABEL_FONT_SIZE_NORMAL = 11
@@ -55,6 +56,16 @@ EDGE_COLOR_NORMAL = '0.2'
 EDGE_WIDTH_NORMAL = 1.5
 EDGE_COLOR_PATH = '#009926'
 EDGE_WIDTH_PATH = 3.0
+NODE_LINEWIDTH_NORMAL = 0.5
+
+NODE_SIZE_ST = 200
+NODE_COLOR_ST = '#009926'
+NODE_BORDER_COLOR_ST = '0.2'
+NODE_LINEWIDTH_ST = 0.5
+NODE_SIZE_ST_INNER = 60
+NODE_COLOR_ST_INNER = '#00CC33'
+NODE_BORDER_COLOR_ST_INNER = '0.2'
+NODE_LINEWIDTH_ST_INNER = 0.5
 
 class OsmGraph(nx.Graph):
     def __init__(self, osm_file):
@@ -83,19 +94,20 @@ class OsmGraph(nx.Graph):
         nodes = nx.draw_networkx_nodes(self,
                                        self.pos,
                                        node_size=NODE_SIZE_NORMAL,
-                                       node_color=NODE_COLOR_NORMAL)
+                                       node_color=NODE_COLOR_NORMAL,
+                                       linewidths=NODE_LINEWIDTH_NORMAL)
         if nodes != None:
             nodes.set_edgecolor(NODE_BORDER_COLOR_NORMAL)
         ws = nx.get_node_attributes(self, 'w')
-        print 'ws =', ws
-        sizes = [20 + ws[v]*NODE_SIZE_PATH for v in self.photo_nodes()]
-        print 'non-path=', sizes
+        sizes = [NODE_SIZE_PHOTO_MIN + ws[v]*NODE_SIZE_PHOTO_SCALE
+                 for v in self.photo_nodes()]
         nodes = nx.draw_networkx_nodes(self,
                                        self.pos,
                                        nodelist=self.photo_nodes(),
                                        node_shape=NODE_SHAPE_PHOTO,
                                        node_size=sizes,
                                        node_color=NODE_COLOR_PHOTO)
+
         if nodes != None:
             nodes.set_edgecolor(NODE_BORDER_COLOR_PHOTO)
         if show_labels:
@@ -125,8 +137,8 @@ class OsmGraph(nx.Graph):
         ws = nx.get_node_attributes(self, 'w')
         photo_path_nodes = list(set(path) & set(self.photo_nodes()))
         if photo_path_nodes != []:
-            sizes = [20 + ws[v]*NODE_SIZE_PATH for v in photo_path_nodes]
-            print 'path=', sizes
+            sizes = [NODE_SIZE_PHOTO_MIN + ws[v]*NODE_SIZE_PHOTO_SCALE
+                     for v in photo_path_nodes]
             nodes = nx.draw_networkx_nodes(self,
                                            self.pos,
                                            nodelist=photo_path_nodes,
@@ -140,6 +152,24 @@ class OsmGraph(nx.Graph):
                                edgelist=edgelist,
                                width=EDGE_WIDTH_PATH,
                                edge_color=EDGE_COLOR_PATH)
+
+    def plot_st(self, s, t):
+        nodes = nx.draw_networkx_nodes(self,
+                                       self.pos,
+                                       nodelist=[s, t],
+                                       node_size=NODE_SIZE_ST,
+                                       node_color=NODE_COLOR_ST,
+                                       linewidths=NODE_LINEWIDTH_ST)
+        if nodes != None:
+            nodes.set_edgecolor(NODE_BORDER_COLOR_ST)
+        nodes = nx.draw_networkx_nodes(self,
+                                       self.pos,
+                                       nodelist=[s, t],
+                                       node_size=NODE_SIZE_ST_INNER,
+                                       node_color=NODE_COLOR_ST_INNER,
+                                       linewidths=NODE_LINEWIDTH_ST_INNER)
+        if nodes != None:
+            nodes.set_edgecolor(NODE_BORDER_COLOR_ST_INNER)
 
     def add_photo_nodes(self, photo_locs):
         photo_locs = np.array(photo_locs)
@@ -184,6 +214,24 @@ def plot_cover(ps, radius=0.0008):
         [matplotlib.patches.Circle(p, radius) for p in ps],
         alpha=0.3)
     ax.add_collection(col)
+
+def greedy_cover(ps, radius=0.0008):
+    ps = {k: shapely.geometry.Point(v).buffer(radius)
+          for k, v in ps.iteritems()}
+    k, u = ps.popitem()
+    perm = [k]
+    totalarea = u.area
+    gains = [totalarea]
+    while ps != {}:
+        print len(ps)
+        mgain = {k: u.union(v).area for k, v in ps.iteritems()}
+        maxi, maxval = max(mgain.iteritems(), key=lambda x: x[1])
+        perm.append(maxi)
+        gains.append(maxval - totalarea)
+        totalarea = maxval
+        u = u.union(ps[maxi])
+        del ps[maxi]
+    return (perm, gains)
 
 def subg(f, v, y):
     assert set(y) <= set(v)
