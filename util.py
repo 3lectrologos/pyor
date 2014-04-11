@@ -41,12 +41,13 @@ def read_photo_locations(fin):
 
 NODE_COLOR_NORMAL = '#5555EE'
 NODE_COLOR_PHOTO = '#E6D030'
-NODE_COLOR_PHOTO_PATH = '#EE3333'
+NODE_COLOR_PHOTO_PATH = '#E52917'
 NODE_BORDER_COLOR_NORMAL = '0.2'
 NODE_BORDER_COLOR_PHOTO = '0.2'
-NODE_COLOR_PATH = '#009926'
+NODE_COLOR_PATH = '#6A990F'
 NODE_BORDER_COLOR_PATH = '0.2'
 NODE_SIZE_NORMAL = 15
+NODE_ALPHA_NORMAL = 0.7
 NODE_SIZE_PHOTO_MIN = 20
 NODE_SIZE_PHOTO_SCALE = 100
 NODE_SIZE_PATH = 30
@@ -54,19 +55,22 @@ NODE_SHAPE_PHOTO = 's'
 LABEL_COLOR_NORMAL = '0.1'
 LABEL_FONT_SIZE_NORMAL = 11
 EDGE_COLOR_NORMAL = '0.2'
+EDGE_ALPHA_NORMAL = 0.3
 EDGE_WIDTH_NORMAL = 1.5
-EDGE_COLOR_PATH = '#009926'
+EDGE_COLOR_PATH = '#6A990F'
 EDGE_WIDTH_PATH = 3.0
 NODE_LINEWIDTH_NORMAL = 0.5
 
 NODE_SIZE_ST = 200
-NODE_COLOR_ST = '#009926'
+NODE_COLOR_ST = '#47660A'
 NODE_BORDER_COLOR_ST = '0.2'
 NODE_LINEWIDTH_ST = 0.5
 NODE_SIZE_ST_INNER = 60
-NODE_COLOR_ST_INNER = '#00CC33'
+NODE_COLOR_ST_INNER = '#6A990F'
 NODE_BORDER_COLOR_ST_INNER = '0.2'
 NODE_LINEWIDTH_ST_INNER = 0.5
+
+COVER_ALPHA = 0.1
 
 class OsmGraph(nx.Graph):
     def __init__(self, osm_file):
@@ -102,7 +106,8 @@ class OsmGraph(nx.Graph):
                                        self.pos,
                                        node_size=NODE_SIZE_NORMAL,
                                        node_color=NODE_COLOR_NORMAL,
-                                       linewidths=NODE_LINEWIDTH_NORMAL)
+                                       linewidths=NODE_LINEWIDTH_NORMAL,
+                                       alpha=NODE_ALPHA_NORMAL)
         if nodes != None:
             nodes.set_edgecolor(NODE_BORDER_COLOR_NORMAL)
         ws = nx.get_node_attributes(self, 'w')
@@ -125,7 +130,8 @@ class OsmGraph(nx.Graph):
         nx.draw_networkx_edges(self,
                                self.pos,
                                width=EDGE_WIDTH_NORMAL,
-                               edge_color=EDGE_COLOR_NORMAL)
+                               edge_color=EDGE_COLOR_NORMAL,
+                               alpha=EDGE_ALPHA_NORMAL)
 
     def plot_path(self, path):
         if path == None:
@@ -213,19 +219,19 @@ def draw():
     plt.axis('equal')
     plt.draw()
 
-def cover_area(ps, radius=200):
+def cover_area(ps, radius):
     u = shapely.ops.cascaded_union(
         [shapely.geometry.Point(p).buffer(radius) for p in ps])
     return u.area
 
-def plot_cover(ps, radius=200):
+def plot_cover(ps, radius):
     ax = plt.gca()
     col = matplotlib.collections.PatchCollection(
         [matplotlib.patches.Circle(p, radius) for p in ps],
-        alpha=0.3)
+        alpha=COVER_ALPHA)
     ax.add_collection(col)
 
-def greedy_cover(ps, radius=200):
+def greedy_cover(ps, radius):
     ps = {k: shapely.geometry.Point(v).buffer(radius)
           for k, v in ps.iteritems()}
     k, u = ps.popitem()
