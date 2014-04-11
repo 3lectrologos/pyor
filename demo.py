@@ -10,10 +10,28 @@ import util
 FILE_GRAPH = 'graph.pickle'
 RADIUS = 100
 
-def create_graph(radius):
+def create_graph():
+    photo_locs = util.read_photo_locations('photo_coords.csv')
+    g = util.OsmGraph('roads_large.json')
+    g.add_photo_nodes(photo_locs)
+    return g
+
+def update_graph(g, radius, prev=None):
     pn = g.photo_nodes()
-    d = {foo: g.pos[foo] for foo in pn}
-    perm, gains = util.greedy_cover({foo: g.pos[foo] for foo in pn}, radius)
+    if prev == None:
+        perm, gains, _ = util.greedy_cover({u: g.pos[u] for u in pn},
+                                           radius=radius)
+    else:
+        xn = g.photo_nodes(prev)
+        perm1, gains1, cov = util.greedy_cover({u: g.pos[u] for u in xn},
+                                             radius=radius)
+        rest = list(set(pn) - set(xn))
+        print '----'
+        perm2, gains2, _ = util.greedy_cover({u: g.pos[u] for u in rest},
+                                            radius=radius,
+                                            ug=cov)
+        perm = perm1 + perm2
+        gains = gains1 + gains2
     weights = dict(zip(perm, [gain/(math.pi*radius**2) for gain in gains]))
     nx.set_node_attributes(g, 'w', weights)
     return g
@@ -38,19 +56,18 @@ def plot(path=[], cover=False):
     # plt.savefig('init.pdf', format='pdf', bbox_inches='tight')
     util.show()    
 
-photo_locs = util.read_photo_locations('photo_coords.csv')
-g = util.OsmGraph('roads_large.json')
-g.add_photo_nodes(photo_locs)
-
 s = 1315
 t = 2000
 
-if os.path.isfile(FILE_GRAPH):
-    g = load_graph(FILE_GRAPH)
-else:
-    g = create_graph(RADIUS)
-    save_graph(g, FILE_GRAPH)
+#if os.path.isfile(FILE_GRAPH):
+#    g = load_graph(FILE_GRAPH)
+#else:
+#    g = create_graph()
+#    update_graph(g, RADIUS)
+#    save_graph(g, FILE_GRAPH)
 
+g = create_graph()
+update_graph(g, RADIUS)
 plot(cover=True)
 
 (status, objective, path) = mip.find_path(g,
@@ -60,4 +77,13 @@ plot(cover=True)
                                           node_budget=10)
 
 print 'Covered area =', util.cover_area([g.pos[u] for u in path], RADIUS)
+plot(path=path)
+
+update_graph(g, RADIUS, prev=path)
+plot(path=path)
+(status, objective, path) = mip.find_path(g,
+                                          start=s,
+                                          end=t,
+                                          edge_budget=3000,
+                                          node_budget=10)
 plot(path=path)

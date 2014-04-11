@@ -97,9 +97,13 @@ class OsmGraph(nx.Graph):
                 self.add_edge(o2n[w[i-1]], o2n[w[i]], t=t)
         self.pos = pos
 
-    def photo_nodes(self):
-        return [v[0] for v in self.nodes(data=True)
-                if v[1].has_key('photo') and v[1]['photo'] == True]
+    def photo_nodes(self, vs=None):
+        photonodes =  [v[0] for v in self.nodes(data=True)
+                       if v[1].has_key('photo') and v[1]['photo'] == True]
+        if vs == None:
+            return photonodes
+        else:
+            return list(set(photonodes) & set(vs))
 
     def plot(self, show_labels=False):
         nodes = nx.draw_networkx_nodes(self,
@@ -148,7 +152,7 @@ class OsmGraph(nx.Graph):
         if nodes != None:
             nodes.set_edgecolor(NODE_BORDER_COLOR_PATH)
         ws = nx.get_node_attributes(self, 'w')
-        photo_path_nodes = list(set(path) & set(self.photo_nodes()))
+        photo_path_nodes = self.photo_nodes(path)
         if photo_path_nodes != []:
             sizes = [NODE_SIZE_PHOTO_MIN + ws[v]*NODE_SIZE_PHOTO_SCALE
                      for v in photo_path_nodes]
@@ -231,13 +235,18 @@ def plot_cover(ps, radius):
         alpha=COVER_ALPHA)
     ax.add_collection(col)
 
-def greedy_cover(ps, radius):
+def greedy_cover(ps, radius, ug=None):
     ps = {k: shapely.geometry.Point(v).buffer(radius)
           for k, v in ps.iteritems()}
     k, u = ps.popitem()
     perm = [k]
-    totalarea = u.area
-    gains = [totalarea]
+    if ug == None:
+        totalarea = u.area
+        gains = [totalarea]
+    else:
+        u = ug.union(u)
+        totalarea = u.area
+        gains = [totalarea - ug.area]
     while ps != {}:
         print len(ps)
         mgain = {k: u.union(v).area for k, v in ps.iteritems()}
@@ -247,7 +256,7 @@ def greedy_cover(ps, radius):
         totalarea = maxval
         u = u.union(ps[maxi])
         del ps[maxi]
-    return (perm, gains)
+    return (perm, gains, u)
 
 def subg(f, v, y):
     assert set(y) <= set(v)
