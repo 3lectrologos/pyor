@@ -14,7 +14,7 @@ import mpl_toolkits.basemap as bsmp
 
 
 def read_osm_file(fin):
-    with open('roads_large.json') as f:
+    with open(fin) as f:
         data = json.load(f)
         coords = {}
         ways = []
@@ -36,8 +36,12 @@ def read_osm_file(fin):
 def read_photo_locations(fin):
     with open(fin, 'r') as tsvin:
         tsvin = csv.reader(tsvin, delimiter=',')
-        locs = [(float(row[0]), float(row[1])) for row in tsvin]
-    return locs
+        ids, locs = [], []
+        for row in tsvin:
+            # Note: Order is (longitude, latitude)
+            locs.append((float(row[3]), float(row[2])))
+            ids.append(int(row[0]))
+    return (ids, locs)
 
 NODE_COLOR_NORMAL = '#5555EE'
 NODE_COLOR_PHOTO = '#E6D030'
@@ -76,7 +80,8 @@ class OsmGraph(nx.Graph):
     def __init__(self, osm_file):
         nx.Graph.__init__(self)
         (nodes, coords, ways) = read_osm_file(osm_file)
-        cproj = coords.values()[0]
+#        cproj = coords.values()[0]
+        cproj = (8.543738, 47.370125)
         self.mp = bsmp.Basemap(projection='ortho',
                                lon_0=cproj[0],
                                lat_0=cproj[1])
@@ -96,14 +101,18 @@ class OsmGraph(nx.Graph):
                 t = np.linalg.norm((c1[0]-c2[0], c1[1]-c2[1]))
                 self.add_edge(o2n[w[i-1]], o2n[w[i]], t=t)
         self.pos = pos
+        self.kd = sp.KDTree(np.array(self.pos.values()))
 
     def photo_nodes(self, vs=None):
-        photonodes =  [v[0] for v in self.nodes(data=True)
-                       if v[1].has_key('photo') and v[1]['photo'] == True]
+        photonodes = [v[0] for v in self.nodes(data=True)
+                      if v[1].has_key('photo') and v[1]['photo'] == True]
         if vs == None:
             return photonodes
         else:
             return list(set(photonodes) & set(vs))
+
+    def is_photo_node(self, v):
+        return self.node[v].has_key('photo') and self.node[v]['photo'] == True
 
     def plot(self, show_labels=False):
         nodes = nx.draw_networkx_nodes(self,
@@ -188,19 +197,17 @@ class OsmGraph(nx.Graph):
         if nodes != None:
             nodes.set_edgecolor(NODE_BORDER_COLOR_ST_INNER)
 
-    def add_photo_nodes(self, photo_locs):
-        photo_locs = [self.mp(i, j) for i, j in photo_locs]
-        photo_locs = np.array(photo_locs)
+    def add_photo_nodes(self, ids, locs):
+        locs = np.array([self.mp(i, j) for i, j in locs])
         n = self.number_of_nodes()
-        kd = sp.KDTree(np.array(self.pos.values()))
-        idxs = list(kd.query(photo_locs)[1])
+        idxs = list(self.kd.query(locs)[1])
         k = 1
         for i, idx in enumerate(idxs):
             nni = self.pos.keys()[idx]
             nnc = self.pos.values()[idx]
             # Photo node
-            self.add_node(n+k, w=1, m=1, photo=True)
-            self.pos[n+k] = (photo_locs[i,0], photo_locs[i,1])
+            self.add_node(n+k, w=1, m=1, photo=True, id=ids[i])
+            self.pos[n+k] = (locs[i,0], locs[i,1])
             self.add_edge(nni, n+k, t=0)
             k = k + 1
             # Aux node on top of nearest node
@@ -235,7 +242,7 @@ def plot_cover(ps, radius):
         alpha=COVER_ALPHA)
     ax.add_collection(col)
 
-def greedy_cover(ps, radius, ug=None):
+def greedy_cover(ps, radius, ug=None, verbose=True):
     ps = {k: shapely.geometry.Point(v).buffer(radius)
           for k, v in ps.iteritems()}
     k, u = ps.popitem()
@@ -248,7 +255,8 @@ def greedy_cover(ps, radius, ug=None):
         totalarea = u.area
         gains = [totalarea - ug.area]
     while ps != {}:
-        print len(ps)
+        if verbose:
+            print len(ps)
         mgain = {k: u.union(v).area for k, v in ps.iteritems()}
         maxi, maxval = max(mgain.iteritems(), key=lambda x: x[1])
         perm.append(maxi)

@@ -1,15 +1,19 @@
 """
 Formulate and solve the orienteering problem for a given NetworkX graph.
 """
+import os
 import gurobipy as grb
 import util
 
 
-DEBUG = True
-
-def find_path(g, start, end, edge_budget, node_budget, dry=False):
+def find_path(g, start, end, edge_budget, node_budget, time_limit,
+              verbose=True):
     if start != end:
-        return find_path_aux(g, start, end, edge_budget, node_budget, dry)
+        return find_path_aux(g, start, end,
+                             edge_budget,
+                             node_budget,
+                             time_limit,
+                             verbose)
     else:
         startedges = g.edges(start, data=True)
         dummy = g.number_of_nodes() + 1
@@ -17,15 +21,19 @@ def find_path(g, start, end, edge_budget, node_budget, dry=False):
         for (u, v, d) in startedges:
             assert u == start
             g.add_edge(v, dummy, t=d['t'])
-        (solstatus, obj, path) = find_path_aux(g, start, dummy, edge_budget,
-                                               node_budget, dry)
+        (solstatus, obj, path) = find_path_aux(g, start, dummy,
+                                               edge_budget,
+                                               node_budget,
+                                               time_limit,
+                                               verbose)
         g.remove_node(dummy)
         if path != None:
             assert path[-1] == dummy
             path[-1] = start
         return (solstatus, obj, path)
 
-def find_path_aux(g, start, end, edge_budget, node_budget, dry=False):
+def find_path_aux(g, start, end, edge_budget, node_budget, time_limit,
+                  verbose=True):
     # Problem parameters
     N = g.number_of_nodes()
     S = start
@@ -33,7 +41,11 @@ def find_path_aux(g, start, end, edge_budget, node_budget, dry=False):
     EB = edge_budget
     NB = node_budget
 
-    if DEBUG:
+    grb.setParam('OutputFlag', verbose)
+    grb.setParam('LogFile', '')
+    os.unlink('gurobi.log')
+
+    if verbose:
         print '(N, S, T, EB, NB) =', ','.join(map(str, [N, S, T, EB, NB]))
     # Model init
     model = grb.Model("Orienteering")
@@ -97,7 +109,7 @@ def find_path_aux(g, start, end, edge_budget, node_budget, dry=False):
                 == 0)
     # Edge budget constraint
     model.addConstr(grb.quicksum(t[i,j]*x[i,j] for (i, j) in x) <= EB)
-    # Node budget constraints
+    # Node budget constraint
     model.addConstr(grb.quicksum(m[j]*x[i,j] for (i, j) in x) <= NB)
     # Subtour elimination constraints (1)
     for k in RN:
@@ -112,17 +124,11 @@ def find_path_aux(g, start, end, edge_budget, node_budget, dry=False):
 
     model.update()
 
-    # Write problem to lp file
-    #model.write('mip.lp')
-
-    if dry == True:
-        return (None, None, None)
-    
     # Solve
-    model.setParam('MIPGap', 0.2)
+    model.setParam('TimeLimit', time_limit)
     model.optimize()
 
-    # If optimal plot path in graph
+    # Decode solution
     if (model.status != grb.GRB.status.OPTIMAL and
         model.status != grb.GRB.status.TIME_LIMIT and
         model.status != grb.GRB.status.INTERRUPTED):
