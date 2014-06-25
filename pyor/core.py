@@ -66,8 +66,8 @@ def get_path(s, t, node_budget=10, edge_budget=2000, time_limit=10,
              plot=False, verbose=False, coords=True):
     g = create_graph()
     if coords:
-        s = g.pos.keys()[g.kd.query(np.array(g.mp(s[1], s[0])))[1]]
-        t = g.pos.keys()[g.kd.query(np.array(g.mp(t[1], t[0])))[1]]
+        s = g.pos.keys()[g.kd.query(np.array(g.mp(s[0], s[1])))[1]]
+        t = g.pos.keys()[g.kd.query(np.array(g.mp(t[0], t[1])))[1]]
     update_graph(g, RADIUS, verbose=verbose)
     if plot:
         plot_graph(g, s, t, cover=True)
