@@ -42,8 +42,6 @@ def find_path_aux(g, start, end, edge_budget, node_budget, time_limit,
     NB = node_budget
 
     grb.setParam('OutputFlag', verbose)
-    grb.setParam('LogFile', '')
-    os.unlink('gurobi.log')
 
     if verbose:
         print '(N, S, T, EB, NB) =', ','.join(map(str, [N, S, T, EB, NB]))
