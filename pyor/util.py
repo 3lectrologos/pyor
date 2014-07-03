@@ -217,6 +217,13 @@ class OsmGraph(nx.Graph):
             for v in es:
                 self.add_edge(n+k, v, t=es[v]['t'])
             k = k + 1
+        self.kdp = sp.KDTree(np.array(self.pos.values()))
+
+
+    def nodes_in_radius(self, nodes, radius):
+        x = np.array([self.pos[node] for node in nodes])
+        keys = self.pos.keys()
+        return [keys[i] for sl in self.kdp.query_ball_point(x, radius) for i in sl]
 
 def show():
     plt.subplots_adjust(left=0.001, right=0.999, top=0.999, bottom=0.001)
@@ -264,6 +271,9 @@ def greedy_cover(ps, radius, ug=None, verbose=True):
         totalarea = maxval
         u = u.union(ps[maxi])
         del ps[maxi]
+    # TODO: Could add a treshold here---if it covers less than eps, set its
+    #       gain to zero---to avoid having these small-contribution waypoints
+    #       that don't look good in the final solutions.
     return (perm, gains, u)
 
 def subg(f, v, y):

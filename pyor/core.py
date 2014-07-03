@@ -4,7 +4,7 @@ import math
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
-import mip
+import scipy.spatial as sp
 import util
 
 
@@ -12,8 +12,8 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 FILE_GRAPH = os.path.join(DATA_DIR, 'graph.pickle')
 PHOTOS_FILE = os.path.join(DATA_DIR, 'valid_images.csv')
 ROADS_FILE = os.path.join(DATA_DIR, 'roads_large.json')
-MIN_WEIGHT = 0.001
-RADIUS = 100
+MIN_WEIGHT = 0
+RADIUS = 70
 
 def create_graph():
     (ids, locs) = util.read_photo_locations(PHOTOS_FILE)
@@ -68,16 +68,11 @@ def get_path(s, t, node_budget=10, edge_budget=2000, time_limit=10,
     if coords:
         s = g.pos.keys()[g.kd.query(np.array(g.mp(s[0], s[1])))[1]]
         t = g.pos.keys()[g.kd.query(np.array(g.mp(t[0], t[1])))[1]]
-    update_graph(g, RADIUS, verbose=verbose)
+    #update_graph(g, RADIUS, verbose=verbose)
     if plot:
         plot_graph(g, s, t, cover=True)
-    (status, objective, path) = mip.find_path(g,
-                                              start=s,
-                                              end=t,
-                                              edge_budget=edge_budget,
-                                              node_budget=node_budget,
-                                              time_limit=time_limit,
-                                              verbose=verbose)
+    path = nx.shortest_path(g, s, t)
+    print g.pos
     if plot:
         plot_graph(g, s, t, path=path, cover=False)
     return [g.node[w]['id'] for w in path if g.is_photo_node(w)]

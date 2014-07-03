@@ -83,7 +83,8 @@ def find_path_aux(g, start, end, edge_budget, node_budget, time_limit,
     model.modelSense = grb.GRB.MAXIMIZE
     model.update()
 
-    RN = range(1, N+1)
+    RN = g.nodes()
+    print RN
 
     # Path starts at S and ends at T
     model.addConstr(grb.quicksum(x[S,j] for j in RN if (S, j) in x) == 1)
