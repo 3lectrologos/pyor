@@ -1,3 +1,4 @@
+import math
 import json
 import csv
 import numpy as np
@@ -80,8 +81,7 @@ class OsmGraph(nx.Graph):
     def __init__(self, osm_file):
         nx.Graph.__init__(self)
         (nodes, coords, ways) = read_osm_file(osm_file)
-#        cproj = coords.values()[0]
-        cproj = (8.543738, 47.370125)
+        cproj = coords.values()[0]
         self.mp = bsmp.Basemap(projection='ortho',
                                lon_0=cproj[0],
                                lat_0=cproj[1])
@@ -225,6 +225,10 @@ class OsmGraph(nx.Graph):
         keys = self.pos.keys()
         return [keys[i] for sl in self.kdp.query_ball_point(x, radius) for i in sl]
 
+    def nearest_node(self, coords):
+        return self.pos.keys()[self.kd.query(
+                np.array(self.mp(coords[0], coords[1])))[1]]
+
 def show():
     plt.subplots_adjust(left=0.001, right=0.999, top=0.999, bottom=0.001)
     plt.axis('equal')
@@ -274,6 +278,7 @@ def greedy_cover(ps, radius, ug=None, verbose=True):
     # TODO: Could add a treshold here---if it covers less than eps, set its
     #       gain to zero---to avoid having these small-contribution waypoints
     #       that don't look good in the final solutions.
+    gains = [g/(math.pi*radius*radius) for g in gains]
     return (perm, gains, u)
 
 def subg(f, v, y):

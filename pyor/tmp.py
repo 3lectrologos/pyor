@@ -1,33 +1,59 @@
+import random
 import networkx as nx
 import core
 import util
 import mip
 
+#START = (8.549948, 47.421401)
+#START = (8.538508, 47.375589)
+#END = (8.543569, 47.369951)
+START = (random.uniform(8.53, 8.55), random.uniform(47.36, 47.38))
+END = (random.uniform(8.53, 8.55), random.uniform(47.36, 47.38))
+#START, END = (8.534931854686034, 47.3763725134755), (8.548649460037252, 47.36161402818917)
+print 'START, END =', START, END
+LENGTH_RATIO = 1.3
 
-S = 250
-T = 20
-RADIUS = 150
-LENGTH_RATIO = 2
+
+def path_length(g, path):
+    plen = 0
+    for i in range(len(path)-1):
+        plen = plen + g.edge[path[i]][path[i+1]]['t']
+    return plen
+
+def subgraph(g, s, t):
+    path = nx.shortest_path(g, s, t, weight='t')
+    core.plot_graph(g, s, t, path=path, cover=False)
+    splen = path_length(g, path)
+    print 'splen =', splen
+    radius = 70#max(70, splen/20.0)
+    nr = g.nodes_in_radius(path, radius)
+    core.plot_graph(g, s, t, nr)
+    g.remove_nodes_from(set(g.nodes()) - set(nr))
+    nc = nx.node_connected_component(g, s)
+    g.remove_nodes_from(set(g.nodes()) - set(nc))
+    return splen
 
 g = core.create_graph()
-path = nx.shortest_path(g, S, T, weight='t')
-splen = 0
-for i in range(len(path)-1):
-    splen = splen + g.edge[path[i]][path[i+1]]['t']
-print 'splen =', splen
-nr = g.nodes_in_radius(path, RADIUS)
-core.plot_graph(g, S, T, nr)
-g.remove_nodes_from(set(g.nodes()) - set(nr))
-nc = nx.node_connected_component(g, S)
-g.remove_nodes_from(set(g.nodes()) - set(nc))
+s = g.nearest_node(START)
+t = g.nearest_node(END)
+splen = subgraph(g, s, t)
 core.update_graph(g, core.RADIUS)
-core.plot_graph(g, S, T)
+core.plot_graph(g, s, t)
 (status, objective, path) = mip.find_path(g,
-                                          start=S,
-                                          end=T,
+                                          start=s,
+                                          end=t,
                                           edge_budget=LENGTH_RATIO*splen,
                                           node_budget=10,
-                                          time_limit=20,
+                                          time_limit=10,
                                           verbose=True)
-print path
-core.plot_graph(g, S, T, path=path, cover=False)
+print 'mip pathlen =', path_length(g, path)
+core.plot_graph(g, s, t, path=path, cover=False)
+selected = [w for w in path if g.is_photo_node(w)]
+print selected
+perm, gains, _ = util.greedy_cover({u: g.pos[u] for u in selected}, 120)
+print perm
+print gains
+removed = [perm[i] for i in range(len(perm)) if gains[i] < 0.4]
+g.pos
+path = [p for p in path if p not in removed]
+core.plot_graph(g, s, t, path=path, cover=False)

@@ -39,9 +39,7 @@ def update_graph(g, radius, prev=None, verbose=True):
                                              verbose=verbose)
         perm = perm1 + perm2
         gains = gains1 + gains2
-    weights = dict(zip(perm,
-                       [max(MIN_WEIGHT, gain/(math.pi*radius**2))
-                        for gain in gains]))
+    weights = dict(zip(perm, [max(MIN_WEIGHT, gain) for gain in gains]))
     nx.set_node_attributes(g, 'w', weights)
     return g
 
@@ -53,26 +51,28 @@ def load_graph(path):
     with open(path, 'r') as fin:
         return pickle.load(fin)
 
-def plot_graph(g, s, t, path=[], cover=False):
+def plot_graph(g, s, t, path=[], cover=False, radius=0):
     plt.clf()
     g.plot()
     g.plot_path(path)
     g.plot_st(s, t)
     if cover:
-        util.plot_cover([g.pos[u] for u in g.photo_nodes()], RADIUS)
+        util.plot_cover([g.pos[u] for u in g.photo_nodes()], radius)
     util.show()    
 
 def get_path(s, t, node_budget=10, edge_budget=2000, time_limit=10,
              plot=False, verbose=False, coords=True):
     g = create_graph()
     if coords:
-        s = g.pos.keys()[g.kd.query(np.array(g.mp(s[0], s[1])))[1]]
-        t = g.pos.keys()[g.kd.query(np.array(g.mp(t[0], t[1])))[1]]
+        s = g.nearest_node(s)
+        t = g.nearest_node(t)
+#        s = g.pos.keys()[g.kd.query(np.array(g.mp(s[0], s[1])))[1]]
+#        t = g.pos.keys()[g.kd.query(np.array(g.mp(t[0], t[1])))[1]]
     #update_graph(g, RADIUS, verbose=verbose)
     if plot:
-        plot_graph(g, s, t, cover=True)
+        plot_graph(g, s, t, cover=True, radius=RADIUS)
     path = nx.shortest_path(g, s, t)
     print g.pos
     if plot:
-        plot_graph(g, s, t, path=path, cover=False)
+        plot_graph(g, s, t, path=path, cover=False, radius=RADIUS)
     return [g.node[w]['id'] for w in path if g.is_photo_node(w)]
