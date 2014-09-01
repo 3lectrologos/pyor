@@ -13,36 +13,6 @@ import shapely.ops
 import mpl_toolkits.basemap as bsmp
 
 
-def read_osm_file(fin):
-    with open(fin) as f:
-        data = json.load(f)
-        coords = {}
-        ways = []
-        for d in data['elements']:
-            if d['type'] == 'node':
-                coords[int(d['id'])] = (d['lon'], d['lat'])
-            if d['type'] != 'way':
-                continue
-            tags = d['tags']
-            if 'area' in tags and tags['area'] == 'yes':
-                continue
-            if 'access' in tags and tags['access'] == 'private':
-                continue
-            ways.append(d['nodes'])
-        nodes = set([a for b in ways for a in b])
-        coords = dict((k, v) for k, v in coords.iteritems() if k in nodes)
-        return (nodes, coords, ways)
-
-def read_photo_locations(fin):
-    with open(fin, 'r') as tsvin:
-        tsvin = csv.reader(tsvin, delimiter=',')
-        ids, locs = [], []
-        for row in tsvin:
-            # Note: Order is (longitude, latitude)
-            locs.append((float(row[3]), float(row[2])))
-            ids.append(int(row[0]))
-    return (ids, locs)
-
 NODE_COLOR_NORMAL = '#5555EE'
 NODE_COLOR_PHOTO = '#E6D030'
 NODE_COLOR_PHOTO_PATH = '#E52917'
@@ -75,44 +45,36 @@ NODE_BORDER_COLOR_ST_INNER = '0.2'
 NODE_LINEWIDTH_ST_INNER = 0.5
 
 COVER_ALPHA = 0.1
+COVER_SIZE = 2
+COVER_ANGLE = 45
 
-class OsmGraph(nx.Graph):
-    def __init__(self, osm_file):
-        nx.Graph.__init__(self)
-        (nodes, coords, ways) = read_osm_file(osm_file)
-#        cproj = coords.values()[0]
-        cproj = (8.543738, 47.370125)
-        self.mp = bsmp.Basemap(projection='ortho',
-                               lon_0=cproj[0],
-                               lat_0=cproj[1])
-        for k, v in coords.iteritems():
-            coords[k] = self.mp(v[0], v[1])
-        self.ways = ways
-        n = len(nodes)
-        n2o = dict(n for n in enumerate(nodes, start=1))
-        o2n = dict(zip(nodes, range(1, n+1)))
-        pos = dict((k, coords[n2o[k]]) for k in range(1, n+1))
-        for i in range(1, n+1):
-            self.add_node(i, pos=pos[i], w=0, m=0)
-        for w in ways:
-            for i in range(1, len(w)):
-                c1 = coords[w[i-1]]
-                c2 = coords[w[i]]
-                t = np.linalg.norm((c1[0]-c2[0], c1[1]-c2[1]))
-                self.add_edge(o2n[w[i-1]], o2n[w[i]], t=t)
-        self.pos = pos
+SKIP_LINES = 5
+NUM_NEAREST_NBG = 5
+
+class RoboGraph(nx.DiGraph):
+    def __init__(self, fin):
+        nx.DiGraph.__init__(self)
+        self.pos = {}
+        with open(fin, 'r') as tsvin:
+            tsvin = csv.reader(tsvin, delimiter='\t')
+            for skip in range(SKIP_LINES):
+                tsvin.next()
+            for row in tsvin:
+                node_id = int(row[0])
+                x, y, z = int(row[1]), int(row[2]), int(row[3])
+                yaw = (int(row[4]), int(row[5]))
+                w = float(row[6])
+                self.add_node(node_id, pos=(x, y), yaw=yaw, w=w)
+                self.pos[node_id] = (x, y)
+                BASE = 7
+                OFFSET = 3
+                for k in range(NUM_NEAREST_NBG):
+                    nbg_id = int(row[BASE + k*OFFSET])
+                    tout = float(row[BASE + k*OFFSET + 1])
+                    tin = float(row[BASE + k*OFFSET + 2])
+                    self.add_edge(node_id, nbg_id, t=tout)
+                    self.add_edge(nbg_id, node_id, t=tin)
         self.kd = sp.KDTree(np.array(self.pos.values()))
-
-    def photo_nodes(self, vs=None):
-        photonodes = [v[0] for v in self.nodes(data=True)
-                      if v[1].has_key('photo') and v[1]['photo'] == True]
-        if vs == None:
-            return photonodes
-        else:
-            return list(set(photonodes) & set(vs))
-
-    def is_photo_node(self, v):
-        return self.node[v].has_key('photo') and self.node[v]['photo'] == True
 
     def plot(self, show_labels=False):
         nodes = nx.draw_networkx_nodes(self,
@@ -123,18 +85,6 @@ class OsmGraph(nx.Graph):
                                        alpha=NODE_ALPHA_NORMAL)
         if nodes != None:
             nodes.set_edgecolor(NODE_BORDER_COLOR_NORMAL)
-        ws = nx.get_node_attributes(self, 'w')
-        sizes = [NODE_SIZE_PHOTO_MIN + ws[v]*NODE_SIZE_PHOTO_SCALE
-                 for v in self.photo_nodes()]
-        nodes = nx.draw_networkx_nodes(self,
-                                       self.pos,
-                                       nodelist=self.photo_nodes(),
-                                       node_shape=NODE_SHAPE_PHOTO,
-                                       node_size=sizes,
-                                       node_color=NODE_COLOR_PHOTO)
-
-        if nodes != None:
-            nodes.set_edgecolor(NODE_BORDER_COLOR_PHOTO)
         if show_labels:
             nx.draw_networkx_labels(self,
                                     self.pos,
@@ -144,6 +94,7 @@ class OsmGraph(nx.Graph):
                                self.pos,
                                width=EDGE_WIDTH_NORMAL,
                                edge_color=EDGE_COLOR_NORMAL,
+                               arrows=False,
                                alpha=EDGE_ALPHA_NORMAL)
 
     def plot_path(self, path):
@@ -161,21 +112,10 @@ class OsmGraph(nx.Graph):
         if nodes != None:
             nodes.set_edgecolor(NODE_BORDER_COLOR_PATH)
         ws = nx.get_node_attributes(self, 'w')
-        photo_path_nodes = self.photo_nodes(path)
-        if photo_path_nodes != []:
-            sizes = [NODE_SIZE_PHOTO_MIN + ws[v]*NODE_SIZE_PHOTO_SCALE
-                     for v in photo_path_nodes]
-            nodes = nx.draw_networkx_nodes(self,
-                                           self.pos,
-                                           nodelist=photo_path_nodes,
-                                           node_shape=NODE_SHAPE_PHOTO,
-                                           node_size=sizes,
-                                           node_color=NODE_COLOR_PHOTO_PATH)
-        if nodes != None:
-            nodes.set_edgecolor(NODE_BORDER_COLOR_PATH)
         nx.draw_networkx_edges(self,
                                self.pos,
                                edgelist=edgelist,
+                               arrows=False,
                                width=EDGE_WIDTH_PATH,
                                edge_color=EDGE_COLOR_PATH)
 
@@ -197,32 +137,38 @@ class OsmGraph(nx.Graph):
         if nodes != None:
             nodes.set_edgecolor(NODE_BORDER_COLOR_ST_INNER)
 
-    def add_photo_nodes(self, ids, locs):
-        locs = np.array([self.mp(i, j) for i, j in locs])
-        n = self.number_of_nodes()
-        idxs = list(self.kd.query(locs)[1])
-        k = 1
-        for i, idx in enumerate(idxs):
-            nni = self.pos.keys()[idx]
-            nnc = self.pos.values()[idx]
-            # Photo node
-            self.add_node(n+k, w=1, m=1, photo=True, id=ids[i])
-            self.pos[n+k] = (locs[i,0], locs[i,1])
-            self.add_edge(nni, n+k, t=0)
-            k = k + 1
-            # Aux node on top of nearest node
-            self.add_node(n+k, w=0, m=0)
-            self.pos[n+k] = (nnc[0], nnc[1])
-            es = self.edge[nni]
-            for v in es:
-                self.add_edge(n+k, v, t=es[v]['t'])
-            k = k + 1
+    def plot_cover(self):
+        ax = plt.gca()
+        polys = []
+        for v in self.nodes_iter():
+            p0 = self.node[v]['pos']
+            yaw = self.node[v]['yaw']
+            w = COVER_SIZE*(1 - np.exp(-self.node[v]['w']))
+            abase = np.radians(COVER_ANGLE)
+            a0 = np.angle(yaw[0] + yaw[1]*1j)
+            a1 = a0 + abase/2.0
+            a2 = a0 - abase/2.0
+            p1 = add(p0, rot(a1, x=(w, 0)))
+            p2 = add(p0, rot(a2, x=(w, 0)))
+            poly = matplotlib.patches.Polygon(np.array([p0, p1, p2]),
+                                              closed=True)
+            polys.append(poly)
+        col = matplotlib.collections.PatchCollection(polys, alpha=COVER_ALPHA)
+        ax.add_collection(col)
+
+def rot(a, x=None):
+    if x == None: x = (1, 0)
+    x = np.matrix(x).T
+    R = np.matrix([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]])
+    rx = R*x
+    return (rx[0, 0], rx[1, 0])
+
+def add(x, y):
+    return (x[0] + y[0], x[1] + y[1])
 
 def show():
     plt.subplots_adjust(left=0.001, right=0.999, top=0.999, bottom=0.001)
     plt.axis('equal')
-    plt.gca().set_xlim((6370000, 6372000))
-    plt.gca().set_ylim((6370000, 6372000))
     plt.show()
 
 def draw():
@@ -235,12 +181,6 @@ def cover_area(ps, radius):
         [shapely.geometry.Point(p).buffer(radius) for p in ps])
     return u.area
 
-def plot_cover(ps, radius):
-    ax = plt.gca()
-    col = matplotlib.collections.PatchCollection(
-        [matplotlib.patches.Circle(p, radius) for p in ps],
-        alpha=COVER_ALPHA)
-    ax.add_collection(col)
 
 def greedy_cover(ps, radius, ug=None, verbose=True):
     ps = {k: shapely.geometry.Point(v).buffer(radius)
