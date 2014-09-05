@@ -8,11 +8,8 @@ import mip
 import util
 
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-ROBO_FILE = os.path.join(DATA_DIR, 'samples_0.txt')
-
-def create_graph():
-    g = util.RoboGraph(ROBO_FILE)
+def create_graph(fin):
+    g = util.RoboGraph(fin)
     return g
 
 def plot_graph(g, s, t, path=[], cover=False):
@@ -24,9 +21,9 @@ def plot_graph(g, s, t, path=[], cover=False):
         g.plot_cover()
     util.show()    
 
-def get_path(s, t, node_budget=10, edge_budget=20, time_limit=10,
+def get_path(fin, s, t, node_budget=10, edge_budget=20, time_limit=10,
              plot=False, verbose=False):
-    g = create_graph()
+    g = create_graph(fin)
     if plot:
         plot_graph(g, s, t, cover=True)
     (status, objective, path) = mip.find_path(g,
