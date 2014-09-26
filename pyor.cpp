@@ -5,7 +5,7 @@
 using namespace std;
 
 
-vector<int> get_path(const char *fin, int s, int t, float ebudget, float tlim) {
+vector<int> get_path(const char *fin, int s, int t, float ebratio, float tlim) {
   Py_Initialize();
   PyObject *name, *module, *dict, *function;
   name = PyString_FromString("cpp");
@@ -15,7 +15,7 @@ vector<int> get_path(const char *fin, int s, int t, float ebudget, float tlim) {
   
   PyObject *res;
   char types[] = "siiff";
-  res = PyObject_CallFunction(function, types, fin, s, t, ebudget, tlim);
+  res = PyObject_CallFunction(function, types, fin, s, t, ebratio, tlim);
   Py_ssize_t len = PyList_Size(res);
   vector<int> path(len);
   for(Py_ssize_t i = 0; i < len; i++) {

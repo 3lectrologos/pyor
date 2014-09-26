@@ -21,12 +21,16 @@ def plot_graph(g, s, t, path=[], cover=False):
         g.plot_cover()
     util.show()    
 
-def get_path(fin, s, t, node_budget=10, edge_budget=20, time_limit=10,
+def get_path(fin, s, t, node_budget=10, eb_ratio=2, time_limit=10,
              plot=False, verbose=False):
     g = create_graph(fin)
     if plot:
         plot_graph(g, s, t, cover=True)
-    (status, objective, path) = mip.find_path(g,
+    spl = nx.shortest_path_length(g, s, t, weight='t')
+    if verbose:
+        print 'Shortest path length =', spl
+    edge_budget = eb_ratio * spl
+    (Status, objective, path) = mip.find_path(g,
                                               start=s,
                                               end=t,
                                               edge_budget=edge_budget,
