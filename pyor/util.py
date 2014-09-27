@@ -48,8 +48,8 @@ COVER_ALPHA = 0.1
 COVER_SIZE = 2
 COVER_ANGLE = 45
 
-SKIP_LINES = 5
-NUM_NEAREST_NBG = 5
+SKIP_LINES = 6
+NUM_NEAREST_NBG = 10
 
 class RoboGraph(nx.DiGraph):
     def __init__(self, fin):
