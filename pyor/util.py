@@ -114,7 +114,7 @@ class OsmGraph(nx.Graph):
     def is_photo_node(self, v):
         return self.node[v].has_key('photo') and self.node[v]['photo'] == True
 
-    def plot(self, show_labels=False):
+    def plot(self, show_labels=False, photo_nodes=True):
         nodes = nx.draw_networkx_nodes(self,
                                        self.pos,
                                        node_size=NODE_SIZE_NORMAL,
@@ -123,18 +123,18 @@ class OsmGraph(nx.Graph):
                                        alpha=NODE_ALPHA_NORMAL)
         if nodes != None:
             nodes.set_edgecolor(NODE_BORDER_COLOR_NORMAL)
-        ws = nx.get_node_attributes(self, 'w')
-        sizes = [NODE_SIZE_PHOTO_MIN + ws[v]*NODE_SIZE_PHOTO_SCALE
-                 for v in self.photo_nodes()]
-        nodes = nx.draw_networkx_nodes(self,
-                                       self.pos,
-                                       nodelist=self.photo_nodes(),
-                                       node_shape=NODE_SHAPE_PHOTO,
-                                       node_size=sizes,
-                                       node_color=NODE_COLOR_PHOTO)
-
-        if nodes != None:
-            nodes.set_edgecolor(NODE_BORDER_COLOR_PHOTO)
+        if photo_nodes:
+            ws = nx.get_node_attributes(self, 'w')
+            sizes = [NODE_SIZE_PHOTO_MIN + ws[v]*NODE_SIZE_PHOTO_SCALE
+                     for v in self.photo_nodes()]
+            nodes = nx.draw_networkx_nodes(self,
+                                           self.pos,
+                                           nodelist=self.photo_nodes(),
+                                           node_shape=NODE_SHAPE_PHOTO,
+                                           node_size=sizes,
+                                           node_color=NODE_COLOR_PHOTO)
+            if nodes != None:
+                nodes.set_edgecolor(NODE_BORDER_COLOR_PHOTO)
         if show_labels:
             nx.draw_networkx_labels(self,
                                     self.pos,
@@ -146,7 +146,7 @@ class OsmGraph(nx.Graph):
                                edge_color=EDGE_COLOR_NORMAL,
                                alpha=EDGE_ALPHA_NORMAL)
 
-    def plot_path(self, path):
+    def plot_path(self, path, weights=True):
         if path == None:
             edgelist = []
         else:
@@ -163,8 +163,12 @@ class OsmGraph(nx.Graph):
         ws = nx.get_node_attributes(self, 'w')
         photo_path_nodes = self.photo_nodes(path)
         if photo_path_nodes != []:
-            sizes = [NODE_SIZE_PHOTO_MIN + ws[v]*NODE_SIZE_PHOTO_SCALE
-                     for v in photo_path_nodes]
+            if weights:
+                sizes = [NODE_SIZE_PHOTO_MIN + ws[v]*NODE_SIZE_PHOTO_SCALE
+                         for v in photo_path_nodes]
+            else:
+                sizes = [NODE_SIZE_PHOTO_MIN + NODE_SIZE_PHOTO_SCALE
+                         for v in photo_path_nodes]
             nodes = nx.draw_networkx_nodes(self,
                                            self.pos,
                                            nodelist=photo_path_nodes,

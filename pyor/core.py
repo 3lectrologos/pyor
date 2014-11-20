@@ -51,11 +51,12 @@ def load_graph(path):
     with open(path, 'r') as fin:
         return pickle.load(fin)
 
-def plot_graph(g, s, t, path=[], cover=False, radius=0):
+def plot_graph(g, s=None, t=None, path=[], cover=False, radius=0, weights=True, photo_nodes=True):
     plt.clf()
-    g.plot()
-    g.plot_path(path)
-    g.plot_st(s, t)
+    g.plot(photo_nodes=photo_nodes)
+    g.plot_path(path, weights=weights)
+    if s is not None and t is not None:
+        g.plot_st(s, t)
     if cover:
         util.plot_cover([g.pos[u] for u in g.photo_nodes()], radius)
     util.show()    
@@ -68,7 +69,7 @@ def get_path(s, t, node_budget=10, edge_budget=2000, time_limit=10,
         t = g.nearest_node(t)
 #        s = g.pos.keys()[g.kd.query(np.array(g.mp(s[0], s[1])))[1]]
 #        t = g.pos.keys()[g.kd.query(np.array(g.mp(t[0], t[1])))[1]]
-    #update_graph(g, RADIUS, verbose=verbose)
+    update_graph(g, RADIUS, verbose=verbose)
     if plot:
         plot_graph(g, s, t, cover=True, radius=RADIUS)
     path = nx.shortest_path(g, s, t)

@@ -7,11 +7,11 @@ import mip
 #START = (8.549948, 47.421401)
 #START = (8.538508, 47.375589)
 #END = (8.543569, 47.369951)
-START = (random.uniform(8.53, 8.55), random.uniform(47.36, 47.38))
-END = (random.uniform(8.53, 8.55), random.uniform(47.36, 47.38))
-#START, END = (8.534931854686034, 47.3763725134755), (8.548649460037252, 47.36161402818917)
+#START = (random.uniform(8.53, 8.55), random.uniform(47.36, 47.38))
+#END = (random.uniform(8.53, 8.55), random.uniform(47.36, 47.38))
+START, END = (8.534931854686034, 47.3763725134755), (8.548649460037252, 47.36761402818917)
 print 'START, END =', START, END
-LENGTH_RATIO = 1.3
+LENGTH_RATIO = 1.5
 
 
 def path_length(g, path):
@@ -22,10 +22,12 @@ def path_length(g, path):
 
 def subgraph(g, s, t):
     path = nx.shortest_path(g, s, t, weight='t')
-    core.plot_graph(g, s, t, path=path, cover=False)
+    core.plot_graph(g, cover=False, photo_nodes=False)
+    core.plot_graph(g, s, t, cover=False, photo_nodes=False)
+    core.plot_graph(g, s, t, cover=False)
     splen = path_length(g, path)
     print 'splen =', splen
-    radius = 70#max(70, splen/20.0)
+    radius = 200#max(70, splen/20.0)
     nr = g.nodes_in_radius(path, radius)
     core.plot_graph(g, s, t, nr)
     g.remove_nodes_from(set(g.nodes()) - set(nr))
@@ -44,7 +46,7 @@ core.plot_graph(g, s, t)
                                           end=t,
                                           edge_budget=LENGTH_RATIO*splen,
                                           node_budget=10,
-                                          time_limit=10,
+                                          time_limit=30,
                                           verbose=True)
 print 'mip pathlen =', path_length(g, path)
 core.plot_graph(g, s, t, path=path, cover=False)
@@ -56,4 +58,4 @@ print gains
 removed = [perm[i] for i in range(len(perm)) if gains[i] < 0.4]
 g.pos
 path = [p for p in path if p not in removed]
-core.plot_graph(g, s, t, path=path, cover=False)
+core.plot_graph(g, s, t, path=path, cover=False, weights=False, photo_nodes=False)
