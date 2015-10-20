@@ -115,14 +115,14 @@ class OsmGraph(nx.Graph):
         return self.node[v].has_key('photo') and self.node[v]['photo'] == True
 
     def plot(self, show_labels=False, photo_nodes=True):
-        nodes = nx.draw_networkx_nodes(self,
-                                       self.pos,
-                                       node_size=NODE_SIZE_NORMAL,
-                                       node_color=NODE_COLOR_NORMAL,
-                                       linewidths=NODE_LINEWIDTH_NORMAL,
-                                       alpha=NODE_ALPHA_NORMAL)
-        if nodes != None:
-            nodes.set_edgecolor(NODE_BORDER_COLOR_NORMAL)
+        # nodes = nx.draw_networkx_nodes(self,
+        #                                self.pos,
+        #                                node_size=NODE_SIZE_NORMAL,
+        #                                node_color=NODE_COLOR_NORMAL,
+        #                                linewidths=NODE_LINEWIDTH_NORMAL,
+        #                                alpha=NODE_ALPHA_NORMAL)
+        # if nodes != None:
+        #     nodes.set_edgecolor(NODE_BORDER_COLOR_NORMAL)
         if photo_nodes:
             ws = nx.get_node_attributes(self, 'w')
             sizes = [NODE_SIZE_PHOTO_MIN + ws[v]*NODE_SIZE_PHOTO_SCALE
@@ -140,11 +140,11 @@ class OsmGraph(nx.Graph):
                                     self.pos,
                                     font_color=LABEL_COLOR_NORMAL,
                                     font_size=LABEL_FONT_SIZE_NORMAL)
-        nx.draw_networkx_edges(self,
-                               self.pos,
-                               width=EDGE_WIDTH_NORMAL,
-                               edge_color=EDGE_COLOR_NORMAL,
-                               alpha=EDGE_ALPHA_NORMAL)
+        # nx.draw_networkx_edges(self,
+        #                        self.pos,
+        #                        width=EDGE_WIDTH_NORMAL,
+        #                        edge_color=EDGE_COLOR_NORMAL,
+        #                        alpha=EDGE_ALPHA_NORMAL)
 
     def plot_path(self, path, weights=True):
         if path == None:
@@ -273,7 +273,9 @@ def greedy_cover(ps, radius, ug=None, verbose=True):
         if verbose:
             print len(ps)
         mgain = {k: u.union(v).area for k, v in ps.iteritems()}
-        maxi, maxval = max(mgain.iteritems(), key=lambda x: x[1])
+        _, maxval = max(mgain.iteritems(), key=lambda x: x[1])
+        allmax = [k for k, v in mgain.iteritems() if v == maxval]
+        maxi = np.random.choice(allmax)
         perm.append(maxi)
         gains.append(maxval - totalarea)
         totalarea = maxval
