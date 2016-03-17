@@ -38,10 +38,12 @@ def read_photo_locations(fin):
     with open(fin, 'r') as tsvin:
         tsvin = csv.reader(tsvin, delimiter=',')
         ids, locs = [], []
+        i = 0
         for row in tsvin:
             # Note: Order is (longitude, latitude)
-            locs.append((float(row[3]), float(row[2])))
-            ids.append(int(row[0]))
+            locs.append((float(row[1]), float(row[0])))
+            ids.append(i)
+            i += 1
     return (ids, locs)
 
 NODE_COLOR_NORMAL = '#5555EE'
@@ -58,7 +60,7 @@ NODE_SIZE_PHOTO_SCALE = 100
 NODE_SIZE_PATH = 30
 NODE_SHAPE_PHOTO = 's'
 LABEL_COLOR_NORMAL = '0.1'
-LABEL_FONT_SIZE_NORMAL = 11
+LABEL_FONT_SIZE_NORMAL = 6
 EDGE_COLOR_NORMAL = '0.2'
 EDGE_ALPHA_NORMAL = 0.3
 EDGE_WIDTH_NORMAL = 1.5
@@ -125,19 +127,39 @@ class OsmGraph(nx.Graph):
         #     nodes.set_edgecolor(NODE_BORDER_COLOR_NORMAL)
         if photo_nodes:
             ws = nx.get_node_attributes(self, 'w')
-            sizes = [NODE_SIZE_PHOTO_MIN + ws[v]*NODE_SIZE_PHOTO_SCALE
-                     for v in self.photo_nodes()]
             nodes = nx.draw_networkx_nodes(self,
                                            self.pos,
                                            nodelist=self.photo_nodes(),
                                            node_shape=NODE_SHAPE_PHOTO,
-                                           node_size=sizes,
+                                           node_size=80,
                                            node_color=NODE_COLOR_PHOTO)
+            sel1 = [self.photo_nodes()[i] for i in [10, 25, 39]]
+            nodes = nx.draw_networkx_nodes(self,
+                                           self.pos,
+                                           nodelist=sel1,
+                                           node_shape=NODE_SHAPE_PHOTO,
+                                           node_size=80,
+                                           node_color=NODE_COLOR_PHOTO_PATH)
+            sel2 = [self.photo_nodes()[i] for i in [2, 5, 16, 18, 27, 41]]
+            nodes = nx.draw_networkx_nodes(self,
+                                           self.pos,
+                                           nodelist=sel2,
+                                           node_shape=NODE_SHAPE_PHOTO,
+                                           node_size=80,
+                                           node_color=NODE_COLOR_ST)
+            sel3 = [self.photo_nodes()[i] for i in [15, 17, 34]]
+            nodes = nx.draw_networkx_nodes(self,
+                                           self.pos,
+                                           nodelist=sel3,
+                                           node_shape=NODE_SHAPE_PHOTO,
+                                           node_size=80,
+                                           node_color=NODE_COLOR_NORMAL)
             if nodes != None:
                 nodes.set_edgecolor(NODE_BORDER_COLOR_PHOTO)
         if show_labels:
             nx.draw_networkx_labels(self,
                                     self.pos,
+                                    labels=dict(zip(self.photo_nodes(), [str(i) for i in range(len(self.photo_nodes()))])),
                                     font_color=LABEL_COLOR_NORMAL,
                                     font_size=LABEL_FONT_SIZE_NORMAL)
         # nx.draw_networkx_edges(self,
@@ -236,8 +258,8 @@ class OsmGraph(nx.Graph):
 def show():
     plt.subplots_adjust(left=0.001, right=0.999, top=0.999, bottom=0.001)
     plt.axis('equal')
-    plt.gca().set_xlim((6370000, 6372000))
-    plt.gca().set_ylim((6370000, 6372000))
+    #plt.gca().set_xlim((6370000, 6372000))
+    #plt.gca().set_ylim((6370000, 6372000))
     plt.show()
 
 def draw():

@@ -10,13 +10,14 @@ import util
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 FILE_GRAPH = os.path.join(DATA_DIR, 'graph.pickle')
-PHOTOS_FILE = os.path.join(DATA_DIR, 'valid_images.csv')
+PHOTOS_FILE = os.path.join(DATA_DIR, 'path_set_50_items.csv')
 ROADS_FILE = os.path.join(DATA_DIR, 'roads_large.json')
 MIN_WEIGHT = 0
 RADIUS = 70
 
 def create_graph():
     (ids, locs) = util.read_photo_locations(PHOTOS_FILE)
+    print ids, locs
     g = util.OsmGraph(ROADS_FILE)
     g.add_photo_nodes(ids, locs)
     return g
@@ -53,7 +54,7 @@ def load_graph(path):
 
 def plot_graph(g, s=None, t=None, path=[], cover=False, radius=0, weights=True, photo_nodes=True):
     plt.clf()
-    g.plot(photo_nodes=photo_nodes)
+    g.plot(photo_nodes=photo_nodes, show_labels=True)
     g.plot_path(path, weights=weights)
     if s is not None and t is not None:
         g.plot_st(s, t)
